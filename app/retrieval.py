@@ -7,7 +7,15 @@ Design decisions:
 - Over-retrieves (k=20) then post-filters so hard filters never empty results.
 - Model: all-MiniLM-L6-v2 — 80 MB, fast cold start, good semantic quality.
 """
+import json
+import numpy as np
+from pathlib import Path
+from typing import Optional
 
+import faiss
+from sentence_transformers import SentenceTransformer
+
+from app.catalog import load_catalog
 import json
 import numpy as np
 from pathlib import Path
