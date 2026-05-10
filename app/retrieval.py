@@ -14,7 +14,8 @@ from pathlib import Path
 from typing import Optional
 
 import faiss
-from sentence_transformers import SentenceTransformer
+from transformers import AutoTokenizer, AutoModel
+import torch
 
 from app.catalog import load_catalog
 
