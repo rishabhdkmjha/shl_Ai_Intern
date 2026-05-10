@@ -1,0 +1,19 @@
+{
+  "persona": "Tech lead at an analytics firm hiring a mid-to-senior data scientist.",
+  "facts": {
+    "role": "Data Scientist",
+    "seniority": "Mid-Professional",
+    "needs": ["Python", "machine learning", "statistics", "SQL"],
+    "remote": true
+  },
+  "first_message": "I need to assess candidates for a data scientist role. They should know Python, ML, and statistics.",
+  "expected_assessments": [
+    "Python (New)",
+    "Data Science (New)",
+    "Basic Statistics (New)",
+    "Automata Data Science (New)",
+    "Automata Data Science Pro (New)",
+    "R Programming (New)",
+    "SQL (New)"
+  ]
+}

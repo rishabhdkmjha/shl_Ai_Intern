@@ -1,0 +1,18 @@
+{
+  "persona": "Hiring manager at a fintech company looking for a mid-level Java developer who also needs to collaborate with business stakeholders.",
+  "facts": {
+    "role": "Java Developer",
+    "seniority": "Mid-level, around 4 years experience",
+    "needs": ["Java technical skills", "stakeholder communication", "problem solving"],
+    "remote": true
+  },
+  "first_message": "I'm hiring a Java developer who works with stakeholders. They need about 4 years of experience.",
+  "expected_assessments": [
+    "Core Java (Advanced Level) (New)",
+    "Java 8 (New)",
+    "Core Java (Entry Level) (New)",
+    "Occupational Personality Questionnaire OPQ32r",
+    "SHL Verify Interactive – Numerical Reasoning",
+    "Programming Concepts"
+  ]
+}

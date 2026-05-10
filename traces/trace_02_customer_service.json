@@ -1,0 +1,19 @@
+{
+  "persona": "HR manager at a retail bank hiring entry-level customer service agents for their contact center.",
+  "facts": {
+    "role": "Customer Service Agent",
+    "seniority": "Entry-level",
+    "needs": ["customer service skills", "phone handling", "typing", "personality fit"],
+    "remote": false,
+    "industry": "banking"
+  },
+  "first_message": "We're hiring entry-level customer service agents for our contact center. They'll be handling customer calls.",
+  "expected_assessments": [
+    "Customer Service Phone Simulation",
+    "Customer Service Phone Solution",
+    "Entry Level Customer Serv-Retail & Contact Center",
+    "Contact Center Call Simulation (New)",
+    "Dependability and Safety Instrument (DSI)",
+    "SVAR - Spoken English (US) (New)"
+  ]
+}
