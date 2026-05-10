@@ -2,9 +2,9 @@
 
 ## System Overview
 
-A stateless FastAPI service backed by FAISS semantic retrieval and Claude (Sonnet)
-for natural-language generation. The agent guides a recruiter from a vague intent to
-a grounded shortlist of 1–10 SHL assessments through multi-turn dialogue.
+A stateless FastAPI service backed by FAISS semantic retrieval and Groq (Llama 3.3
+70B) for natural-language generation. The agent guides a recruiter from a vague
+intent to a grounded shortlist of 1–10 SHL assessments through multi-turn dialogue.
 
 ---
 
@@ -15,7 +15,7 @@ a grounded shortlist of 1–10 SHL assessments through multi-turn dialogue.
 The raw catalog JSON is enriched into a `searchable_text` blob per item that
 concatenates: assessment name, full description, job levels, test categories,
 duration, adaptive flag, and remote availability. This single rich string is what
-gets embedded — not just the name or description in isolation. The rationale: a
+gets indexed — not just the name or description in isolation. The rationale: a
 query like "quick personality test for entry-level call centre staff" contains
 multiple implicit signals (personality → type filter, entry-level → job level
 filter, quick → duration preference) that all need to be present in the indexed
@@ -27,16 +27,16 @@ directly and avoids re-deriving it at response time.
 
 ### 2. Retrieval Setup
 
-- **Model**: `all-MiniLM-L6-v2` (80 MB, ~50 ms encode on CPU). Chosen for cold-start
-  friendliness on free-tier platforms (Render, Railway) while staying within the
-  30-second timeout. Larger models (bge-large-en-v1.5) improved Recall@10 by ~4%
-  in offline experiments but caused cold-start timeouts.
+- **Embeddings**: Lightweight hash-based embeddings (no torch/GPU dependency).
+  Chosen for cold-start friendliness on free-tier platforms (Render) while staying
+  within the 512MB memory limit. Sentence-transformers improved semantic quality
+  but caused out-of-memory errors on free hosting tiers.
 - **Index**: `faiss.IndexFlatIP` (exact cosine similarity on L2-normalised vectors).
-  No approximate index (HNSW) needed at ~400 items.
+  No approximate index (HNSW) needed at ~377 items.
 - **Over-retrieval**: Retrieve 3×k (default k=10, so fetch 30 candidates), apply
-  post-retrieval hard filters (job level, test type, remote), then truncate to k.
-  This prevents filters from emptying results when semantic ranking and hard
-  constraints pull in different directions.
+  post-retrieval hard filters (job level, remote), then truncate to k. This
+  prevents filters from emptying results when semantic ranking and hard constraints
+  pull in different directions.
 
 ### 3. Prompt Design
 
@@ -44,12 +44,10 @@ The system prompt is injected fresh on every turn with the retrieved catalog sli
 formatted as a compact bullet list (name, type code, URL, level tags, 150-char
 description snippet). The LLM sees only the retrieved items, not the full catalog.
 This keeps the context window small, prevents the LLM from hallucinating catalog
-items it was trained on but that are not in the current slice, and ensures every
-URL in the output came from our data.
+items, and ensures every URL in the output came from our data.
 
 Recommendations are requested inside `<RECOMMENDATIONS>[...]</RECOMMENDATIONS>` XML
-tags rather than via function/tool calling. Reason: in testing, tool call JSON was
-occasionally malformed on the first turn; tag-delimited regex parsing is
+tags rather than via function/tool calling. Reason: tag-delimited regex parsing is
 deterministic and does not depend on the model correctly invoking a tool schema.
 
 ### 4. Agent (Decider) Design
@@ -62,7 +60,7 @@ fixed. Benefits:
 
 - Guardrails are deterministic — injection can never reach the generation step.
 - Clarify-vs-recommend is predictable regardless of LLM temperature.
-- No wasted tokens on "should I ask a question?" deliberation.
+- No wasted tokens on deliberation.
 
 The "sufficient context" heuristic requires at least one role/skill signal AND one
 seniority/type signal, OR detects a job-description block, OR fires after 3 user
@@ -81,21 +79,23 @@ and the intent was RECOMMEND or REFINE.
 
 ## Evaluation Approach
 
-Offline Recall@10 was measured by replaying each of the 10 public traces against
-the live `/chat` endpoint using a scripted user (`scripts/evaluate.py`). The
-simulated user submits the trace's `first_message`, then accepts the first
-shortlist the agent returns.
+Tested all 5 key behavior probes manually:
+
+- **Vague query** → agent asks clarifying question, returns empty recommendations ✅
+- **Off-topic query** → agent refuses politely ✅
+- **Prompt injection** → agent refuses, rules checked before LLM ✅
+- **Full context** → agent returns 1-10 grounded recommendations ✅
+- **Refinement** → agent updates shortlist without restarting ✅
 
 **Key findings from iteration:**
-- Using only the description for embedding gave Recall@10 ≈ 0.48.
-- Adding job levels and keys to `searchable_text` lifted it to ≈ 0.67.
-- The over-retrieve-then-filter pattern added ~0.05 over exact-k retrieval.
 
-**Failure modes caught during testing:**
+- `sentence-transformers` caused out-of-memory on free hosting (512MB limit).
+  Replaced with lightweight hash-based embeddings to fit within memory constraints.
 - LLM recommended on turn 1 for vague queries → fixed by Decider CLARIFY check.
-- Hallucinated OPQ32 URL with slightly wrong path → fixed by URL allowlist check.
-- Agent looped on clarification for JD-paste queries → fixed by JD detection in
-  `_has_enough_context`.
+- Hallucinated URLs → fixed by URL allowlist validation post-processing.
+- Agent looped on clarification for JD-paste queries → fixed by JD detection.
+- `.format()` on system prompt crashed when prompt contained JSON examples with
+  curly braces → fixed by using `.replace()` instead.
 
 ---
 
@@ -104,10 +104,10 @@ shortlist the agent returns.
 | Component | Choice | Reason |
 |-----------|--------|--------|
 | API | FastAPI + Pydantic v2 | Schema validation, async-ready |
-| Embeddings | sentence-transformers all-MiniLM-L6-v2 | Fast CPU inference |
+| Embeddings | Hash-based (numpy) | Zero memory overhead, no torch |
 | Vector store | FAISS (faiss-cpu) | Zero infra, deterministic |
-| LLM | Anthropic Claude Sonnet | Strong instruction-following |
-| Deployment | Render / Railway / Fly.io | Free tier, cold-start < 2 min |
+| LLM | Groq Llama 3.3 70B | Fast inference, free tier |
+| Deployment | Render | Free tier, cold-start < 2 min |
 
-AI tools used: Claude (Anthropic) for code review and prompt iteration drafts.
+**AI tools used**: Claude (Anthropic) for debugging assistance and code review.
 All design decisions were made and understood independently.
